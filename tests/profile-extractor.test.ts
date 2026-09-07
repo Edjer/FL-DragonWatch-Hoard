@@ -258,6 +258,24 @@ describe('FetLife profile extractor', () => {
     });
   });
 
+  it('extracts FetLife location values from profile place links', () => {
+    document.body.innerHTML = `
+      <header data-test-id="profile-header">
+        <h1><span>EdjerPendragon</span><span data-original-title="Verified Profile"><svg><use href="/icon-sprite.svg#icon-verified"></use></svg></span><span title="FetLife Supporter"><svg><use href="/icon-sprite.svg#icon-devil-heart"></use></svg></span><span>54M Dragon</span></h1>
+        <p class="my-0 pt-2 text-center text-base leading-normal text-gray-200 md:pt-0 md:text-left md:text-md">
+          <span class="comma-separated"><a href="/p/united-states/pennsylvania/lehighton">Lehighton</a></span><span class="comma-separated"><a href="/p/united-states/pennsylvania">Pennsylvania</a></span><span class="comma-separated"><a href="/p/united-states">United States</a></span>
+        </p>
+        <p>Joined March 2009 #141464</p>
+      </header>
+    `;
+
+    expect(extractFetLifeProfile(document, sourceUrl).snapshot?.profile.location).toEqual({
+      city: 'Lehighton',
+      region: 'Pennsylvania',
+      country: 'United States',
+    });
+  });
+
   it('extracts real location links and splits fetishes into capped categories', () => {
     const intoRows = Array.from(
       { length: 76 },

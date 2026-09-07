@@ -244,7 +244,7 @@ function profileLocation(root: ParentNode): string[] {
   if (explicit.length > 0) return explicit.slice(0, 3);
 
   const links = uniqueText(
-    Array.from(root.querySelectorAll<HTMLElement>('a[href*="/locations/"]')),
+    Array.from(root.querySelectorAll<HTMLElement>('a[href*="/locations/"], a[href*="/p/"]')),
   );
   if (links.length > 0) return links.slice(0, 3);
 
