@@ -35,6 +35,7 @@ const SECTION_SELECTORS = {
   ],
   fetishes: [
     '[data-test-id="profile-fetishes"]',
+    '[data-profile-fetishes]',
     'turbo-frame#profile-fetishes',
     'turbo-frame[id^="profile-fetishes"]',
   ],
@@ -62,6 +63,8 @@ const MONTHS: Record<string, number> = {
   november: 11,
   december: 12,
 };
+
+const MAX_FETISHES = 75;
 
 function text(element: Element | null, preserveLines = false): string {
   if (!element) return '';
@@ -216,6 +219,44 @@ function socialCount(root: ParentNode, label: string): number | null {
   return numberValue(text(first(root, [`[data-test-id="profile-${label.toLowerCase()}"]`])));
 }
 
+function profileLocation(root: ParentNode): string[] {
+  const explicit = listValues(root, [
+    '[data-test-id="profile-location"]',
+    '[data-profile-location]',
+  ]);
+  if (explicit.length > 0) return explicit.slice(0, 3);
+
+  const links = uniqueText(
+    Array.from(root.querySelectorAll<HTMLElement>('a[href*="/locations/"]')),
+  );
+  if (links.length > 0) return links.slice(0, 3);
+
+  const labelled = labelledValue(root, 'Location');
+  if (labelled)
+    return labelled
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .slice(0, 3);
+
+  const candidate = Array.from(root.querySelectorAll<HTMLElement>('*'))
+    .map((element) => (element.children.length === 0 ? text(element) : directText(element)))
+    .find((value) => {
+      const parts = value
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean);
+      return parts.length >= 2 && parts.length <= 3 && value.length <= 180;
+    });
+  return candidate
+    ? candidate
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .slice(0, 3)
+    : [];
+}
+
 function relationshipBlocks(
   root: ParentNode,
 ): Array<{ element: HTMLElement; category: FetLifeRelationship['category'] }> {
@@ -258,6 +299,49 @@ function listValues(root: ParentNode, selectors: readonly string[]): string[] {
     return items.length > 0 ? items : [element];
   });
   return uniqueText(values);
+}
+
+function textWithoutElement(element: HTMLElement, excluded: Element | null): string {
+  if (!excluded) return text(element);
+  const read = (node: Node): string => {
+    if (node === excluded) return '';
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
+    return Array.from(node.childNodes).map(read).join(' ');
+  };
+  return read(element).replace(/\s+/g, ' ').trim();
+}
+
+function relationshipRowForLink(link: HTMLAnchorElement, scope: HTMLElement): HTMLElement {
+  let row: HTMLElement = link;
+  for (let parent = link.parentElement; parent && parent !== scope; parent = parent.parentElement) {
+    if (parent.querySelectorAll('a[href]').length !== 1) break;
+    row = parent;
+  }
+  return row;
+}
+
+function precedingRelationshipCategory(
+  scope: HTMLElement,
+  row: HTMLElement,
+): FetLifeRelationship['category'] | null {
+  let latest: FetLifeRelationship['category'] | null = null;
+  for (const marker of Array.from(scope.querySelectorAll<HTMLElement>('*'))) {
+    const normalized = text(marker).replace(/\s+/g, ' ').trim().toLowerCase();
+    const category =
+      normalized === 'd/s relationships'
+        ? 'ds'
+        : normalized === 'relationships'
+          ? 'relationship'
+          : null;
+    if (
+      category &&
+      !marker.contains(row) &&
+      marker.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING
+    ) {
+      latest = category;
+    }
+  }
+  return latest;
 }
 
 function statusFromText(value: string): 'going' | 'interested' | null {
@@ -450,24 +534,24 @@ function extractRelationships(
     const relationshipRows =
       rows.length > 0
         ? rows
-        : all(scope.element, ['a[href]']).map((link) => link.closest<HTMLElement>('li') ?? link);
+        : uniqueElements(
+            all(scope.element, ['a[href]']).map((link) =>
+              relationshipRowForLink(link as HTMLAnchorElement, scope.element),
+            ),
+          );
     for (const row of relationshipRows) {
       const category =
         row.dataset.category === 'ds' || row.dataset.relationshipCategory === 'ds'
           ? 'ds'
-          : (scope.category ?? 'relationship');
+          : (scope.category ?? precedingRelationshipCategory(scope.element, row) ?? 'relationship');
       const link = row.matches('a[href]')
         ? (row as HTMLAnchorElement)
         : row.querySelector<HTMLAnchorElement>('a[href]');
       const type =
         row.dataset.relationshipType ??
         (text(first(row, ['[data-test-id="relationship-type"]', 'dt', 'strong'])) ||
-          directText(row)
-            .replace(link ? directText(link) : '', '')
-            .trim() ||
-          text(scope.element)
+          textWithoutElement(row, link)
             .replace(/^\s*(?:Relationships|D\/s relationships)\s*/i, '')
-            .replace(link ? text(link) : '', '')
             .trim());
       const profileUrl = canonicalUrl(link?.getAttribute('href') ?? null, baseUrl);
       const username = link ? directText(link) || text(link) || null : null;
@@ -653,29 +737,66 @@ function extractFetishes(
       soft_limit: 'softLimits',
       hard_limit: 'hardLimits',
     };
-  const rows = all(section, ['[data-test-id="fetish-row"]', '[data-fetish-category]']);
+  const categoryFromText = (value: string): FetLifeFetish['category'] | null => {
+    const normalized = value.replace(/\s+/g, ' ').trim().toLowerCase();
+    if (/^into\b/.test(normalized)) return 'into';
+    if (/^curious\s+about\b/.test(normalized)) return 'curious_about';
+    if (/^soft\s+limits?\b/.test(normalized)) return 'soft_limit';
+    if (/^hard\s+limits?\b/.test(normalized)) return 'hard_limit';
+    return null;
+  };
+  const precedingCategory = (row: HTMLElement): FetLifeFetish['category'] | null => {
+    let latest: FetLifeFetish['category'] | null = null;
+    for (const marker of Array.from(section.querySelectorAll<HTMLElement>('*'))) {
+      const category = categoryFromText(text(marker));
+      if (
+        category &&
+        !marker.contains(row) &&
+        marker.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING
+      ) {
+        latest = category;
+      }
+    }
+    return latest;
+  };
+  const links = uniqueElements(all(section, ['a[href*="/fetishes/"]']));
+  const rows = links.map(
+    (link) =>
+      link.closest<HTMLElement>('[data-test-id="fetish-row"], [data-fetish-category], li') ?? link,
+  );
+  let capped = false;
   for (const row of rows) {
-    const category = categoryMap[(row.dataset.fetishCategory ?? '').toLowerCase()];
+    const category =
+      categoryMap[(row.dataset.fetishCategory ?? '').toLowerCase()] ?? precedingCategory(row);
     if (!category) continue;
-    const link = row.querySelector<HTMLAnchorElement>('a[href]');
+    const link = row.matches('a[href*="/fetishes/"]')
+      ? (row as HTMLAnchorElement)
+      : row.querySelector<HTMLAnchorElement>('a[href*="/fetishes/"]');
     const href = link?.getAttribute('href') ?? null;
     const id = row.dataset.fetishId ?? externalId(href, 'fetishes', baseUrl);
     if (href?.includes('/fetishes/') && !id)
       warnings.push('Skipped a fetish with a malformed URL.');
-    const name = text(first(row, ['[data-test-id="fetish-name"]'])) || text(link) || text(row);
+    const name =
+      text(first(row, ['[data-test-id="fetish-name"]'])) ||
+      directText(link) ||
+      text(link) ||
+      text(row);
     if (!name) continue;
     const detail =
       text(first(row, ['[data-test-id="fetish-detail"]'])) || row.dataset.fetishDetail || null;
     result[categoryKeys[category]].push({ fetlifeFetishId: id, name, detail, category });
   }
   for (const key of Object.keys(result) as Array<keyof typeof result>) {
-    result[key] = result[key].filter(
+    const deduped = result[key].filter(
       (item, index, values) =>
         values.findIndex(
           (candidate) => candidate.name === item.name && candidate.detail === item.detail,
         ) === index,
     );
+    if (deduped.length > MAX_FETISHES) capped = true;
+    result[key] = deduped.slice(0, MAX_FETISHES);
   }
+  if (capped) warnings.push(`Fetish capture capped at ${MAX_FETISHES} items per category.`);
   return result;
 }
 
@@ -714,19 +835,7 @@ export function extractFetLifeProfile(
   const ids = collectIdCandidates(root, header, joinedValue, sourceUrl);
   if (ids.size === 0) warnings.push('No stable FetLife profile ID could be determined.');
   if (ids.size > 1) warnings.push('Conflicting FetLife profile ID candidates detected.');
-  const location = listValues(header, [
-    '[data-test-id="profile-location"]',
-    '[data-profile-location]',
-  ]).slice(0, 3);
-  if (location.length === 0) {
-    location.push(
-      ...labelledValue(header, 'Location')
-        .split(',')
-        .map((value) => value.trim())
-        .filter(Boolean)
-        .slice(0, 3),
-    );
-  }
+  const location = profileLocation(header);
   const pronounValue =
     text(
       first(header, [
