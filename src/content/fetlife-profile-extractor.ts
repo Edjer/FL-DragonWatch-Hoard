@@ -220,6 +220,23 @@ function socialCount(root: ParentNode, label: string): number | null {
 }
 
 function profileLocation(root: ParentNode): string[] {
+  const splitLocation = (value: string): string[] => {
+    const parts = value
+      .replace(/^location\s*:?\s*/i, '')
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (
+      parts.length < 2 ||
+      parts.length > 3 ||
+      value.length > 120 ||
+      parts.some((part) => part.length > 40) ||
+      value.split(/\s+/).length > 12
+    ) {
+      return [];
+    }
+    return parts;
+  };
   const explicit = listValues(root, [
     '[data-test-id="profile-location"]',
     '[data-profile-location]',
@@ -232,29 +249,35 @@ function profileLocation(root: ParentNode): string[] {
   if (links.length > 0) return links.slice(0, 3);
 
   const labelled = labelledValue(root, 'Location');
-  if (labelled)
-    return labelled
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean)
-      .slice(0, 3);
+  if (labelled) {
+    const parts = splitLocation(labelled);
+    if (parts.length > 0) return parts;
+  }
+
+  const semanticCandidates = Array.from(
+    root.querySelectorAll<HTMLElement>('[class], [id], [aria-label], [title]'),
+  ).filter((element) =>
+    /(?:location|city|region|country)/i.test(
+      [
+        element.className,
+        element.id,
+        element.getAttribute('aria-label'),
+        element.getAttribute('title'),
+      ]
+        .filter((value): value is string => typeof value === 'string')
+        .join(' '),
+    ),
+  );
+  for (const element of semanticCandidates) {
+    const parts = splitLocation(directText(element) || text(element));
+    if (parts.length > 0) return parts;
+  }
 
   const candidate = Array.from(root.querySelectorAll<HTMLElement>('*'))
     .map((element) => (element.children.length === 0 ? text(element) : directText(element)))
-    .find((value) => {
-      const parts = value
-        .split(',')
-        .map((part) => part.trim())
-        .filter(Boolean);
-      return parts.length >= 2 && parts.length <= 3 && value.length <= 180;
-    });
-  return candidate
-    ? candidate
-        .split(',')
-        .map((value) => value.trim())
-        .filter(Boolean)
-        .slice(0, 3)
-    : [];
+    .map(splitLocation)
+    .find((parts) => parts.length > 0);
+  return candidate ?? [];
 }
 
 function relationshipBlocks(

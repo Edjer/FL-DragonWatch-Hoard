@@ -240,6 +240,24 @@ describe('FetLife profile extractor', () => {
     ]);
   });
 
+  it('does not mistake role tooltip prose for the profile location', () => {
+    document.body.innerHTML = `
+      <header data-test-id="profile-header">
+        <h1>ExampleUser</h1>
+        <p>54M Dragon</p>
+        <p>Joined March 2009 #141464</p>
+        <div class="profile-location-value">Lehighton, PA, United States</div>
+        <div class="role-help" title="Usually refers to someone masculine-identifying who enjoys taking on a nurturing, paternal figure role while also leading and taking control in a power exchange dynamic."></div>
+      </header>
+    `;
+
+    expect(extractFetLifeProfile(document, sourceUrl).snapshot?.profile.location).toEqual({
+      city: 'Lehighton',
+      region: 'PA',
+      country: 'United States',
+    });
+  });
+
   it('extracts real location links and splits fetishes into capped categories', () => {
     const intoRows = Array.from(
       { length: 76 },
