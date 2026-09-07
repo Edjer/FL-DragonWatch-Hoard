@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DragonWatch</title>
+  </head>
+  <body>
+    <main class="wd-popup">
+      <header>
+        <p class="wd-kicker">MANUAL PROFILE CAPTURE</p>
+        <h1>DragonWatch</h1>
+      </header>
+      <section class="wd-capture" aria-labelledby="capture-title">
+        <div class="wd-capture-heading">
+          <div>
+            <p class="wd-kicker">CURRENT TAB</p>
+            <h2 id="capture-title">FetLife profile</h2>
+          </div>
+          <span id="capture-state" class="wd-capture-state" aria-hidden="true"></span>
+        </div>
+        <p id="capture-status" role="status" aria-live="polite">Reading FetLife profile...</p>
+        <p id="capture-detail" class="wd-capture-detail"></p>
+        <div id="capture-data" class="wd-capture-data" hidden></div>
+        <div class="wd-capture-actions">
+          <button id="refresh-profile" class="wd-secondary" type="button">Refresh from page</button>
+          <button id="open-watchdragon" class="wd-secondary" type="button" hidden>
+            Open WatchDragon
+          </button>
+        </div>
+      </section>
+      <section class="wd-connection" aria-labelledby="connection-title">
+        <div class="wd-connection-heading">
+          <h2 id="connection-title">API connection</h2>
+          <span id="connection-dot" class="wd-connection-dot" aria-hidden="true"></span>
+        </div>
+        <p id="connection-status" role="status" aria-live="polite">Checking connection...</p>
+        <p id="connection-detail" class="wd-connection-detail"></p>
+        <button id="check-api" class="wd-secondary" type="button">Check connection</button>
+      </section>
+      <form id="settings-form">
+        <label>API URL <input id="api-url" name="apiUrl" type="url" required /></label>
+        <label>Web/PWA URL <input id="web-url" name="webUrl" type="url" required /></label>
+        <label
+          >API token <input id="api-token" name="apiToken" type="password" autocomplete="off"
+        /></label>
+        <label class="wd-check"
+          ><input id="overlays-enabled" name="overlaysEnabled" type="checkbox" /> Enable page
+          overlays</label
+        >
+        <label class="wd-check"
+          ><input id="cards-enabled" name="cardsEnabled" type="checkbox" /> Enable summary
+          cards</label
+        >
+        <label class="wd-check"
+          ><input id="mock-mode" name="mockMode" type="checkbox" /> Enable mock development
+          mode</label
+        >
+        <button type="submit">Save settings</button>
+        <p id="saved" role="status" aria-live="polite"></p>
+      </form>
+    </main>
+    <script type="module" src="./index.ts"></script>
+  </body>
+</html>

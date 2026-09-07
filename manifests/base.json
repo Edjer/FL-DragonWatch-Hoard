@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "DragonWatch",
+  "version": "0.1.0",
+  "description": "Manual DragonWatch annotations and FetLife profile capture for a configured site.",
+  "permissions": ["storage"],
+  "host_permissions": ["__SITE_ORIGIN__/*", "__API_ORIGIN__/*"],
+  "content_scripts": [
+    {
+      "matches": ["__SITE_ORIGIN__/*"],
+      "js": ["assets/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "assets/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_title": "DragonWatch"
+  }
+}

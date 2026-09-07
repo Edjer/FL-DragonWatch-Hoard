@@ -1,0 +1,118 @@
+.wd-indicator {
+  align-items: center;
+  background: #17222b;
+  border: 1px solid #52616b;
+  border-radius: 999px;
+  color: #dbe7ee;
+  cursor: pointer;
+  display: inline-flex;
+  font:
+    700 10px/1 system-ui,
+    sans-serif;
+  height: 20px;
+  justify-content: center;
+  margin-left: 5px;
+  min-width: 20px;
+  padding: 0 5px;
+  vertical-align: middle;
+}
+
+.wd-indicator:hover,
+.wd-indicator:focus-visible {
+  outline: 2px solid #d6a85f;
+  outline-offset: 2px;
+}
+.wd-status-watch {
+  border-color: #d6a85f;
+  color: #f0c978;
+}
+.wd-status-flagged {
+  border-color: #e38c7a;
+  color: #ffb09d;
+}
+.wd-status-reviewed {
+  border-color: #80b5d5;
+  color: #a5d0e9;
+}
+.wd-status-linked {
+  border-color: #8fc59e;
+  color: #b1e1bd;
+}
+
+.wd-card {
+  background: #101a21;
+  border: 1px solid #38505e;
+  border-radius: 10px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+  color: #e8edf2;
+  font:
+    14px/1.4 system-ui,
+    sans-serif;
+  max-width: calc(100vw - 24px);
+  padding: 15px;
+  position: fixed;
+  width: 280px;
+  z-index: 2147483647;
+}
+
+.wd-card-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+.wd-card-heading strong {
+  color: #d6a85f;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.wd-card-status {
+  font-size: 11px;
+  font-weight: 700;
+}
+.wd-card h3 {
+  font-size: 20px;
+  margin: 13px 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wd-card-confidence,
+.wd-card-reviewed {
+  color: #9fb0bc;
+  font-size: 12px;
+  margin: 0;
+}
+.wd-card dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  margin: 16px 0;
+  row-gap: 5px;
+}
+.wd-card dt {
+  color: #9fb0bc;
+}
+.wd-card dd {
+  margin: 0;
+}
+.wd-card-link {
+  background: #d6a85f;
+  border-radius: 5px;
+  color: #101a21;
+  display: block;
+  font-weight: 700;
+  margin-top: 15px;
+  padding: 8px 10px;
+  text-align: center;
+  text-decoration: none;
+}
+.wd-card-link:focus-visible,
+.wd-card-link:hover {
+  background: #f0c978;
+}
+
+@media (max-width: 440px) {
+  .wd-card {
+    width: calc(100vw - 24px);
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "background": {
+    "scripts": ["assets/background.js"],
+    "type": "module"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "dragonwatch@localhost",
+      "strict_min_version": "109.0"
+    }
+  }
+}

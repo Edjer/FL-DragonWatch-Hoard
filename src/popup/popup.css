@@ -1,0 +1,190 @@
+:root {
+  color-scheme: dark;
+}
+body {
+  background: #081016;
+  color: #e8edf2;
+  font:
+    14px/1.4 system-ui,
+    sans-serif;
+  margin: 0;
+  min-width: 320px;
+}
+.wd-popup {
+  padding: 20px;
+}
+.wd-kicker {
+  color: #d6a85f;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  margin: 0 0 7px;
+}
+h1 {
+  font:
+    400 30px Georgia,
+    serif;
+  margin: 0 0 22px;
+}
+.wd-capture {
+  background: #111b23;
+  border: 1px solid #52616b;
+  border-radius: 5px;
+  margin-bottom: 17px;
+  padding: 12px;
+}
+.wd-capture-heading {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+}
+.wd-capture h2 {
+  font-size: 16px;
+  margin: 0;
+}
+.wd-capture .wd-kicker {
+  margin-bottom: 4px;
+}
+.wd-capture-state {
+  background: #d6a85f;
+  border-radius: 50%;
+  height: 9px;
+  margin-top: 4px;
+  width: 9px;
+}
+.wd-capture-state.wd-capture-ok {
+  background: #8fc59e;
+}
+.wd-capture-state.wd-capture-error {
+  background: #e38c7a;
+}
+.wd-capture p {
+  margin: 8px 0 0;
+}
+.wd-capture-detail {
+  color: #aab8c2;
+  font-size: 12px;
+}
+.wd-capture-data {
+  border-top: 1px solid #344754;
+  margin-top: 12px;
+  padding-top: 4px;
+}
+.wd-capture-data details {
+  border-bottom: 1px solid #263640;
+  padding: 8px 0;
+}
+.wd-capture-data summary {
+  color: #d6a85f;
+  cursor: pointer;
+  font-weight: 700;
+}
+.wd-capture-row {
+  color: #dbe7ee;
+  margin: 6px 0 0;
+  white-space: pre-line;
+}
+.wd-capture-list {
+  color: #aab8c2;
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.wd-capture-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.wd-connection {
+  background: #111b23;
+  border: 1px solid #344754;
+  border-radius: 5px;
+  margin-bottom: 17px;
+  padding: 12px;
+}
+.wd-connection-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+.wd-connection h2 {
+  font-size: 13px;
+  margin: 0;
+}
+.wd-connection-dot {
+  background: #71808a;
+  border-radius: 50%;
+  height: 9px;
+  width: 9px;
+}
+.wd-connection-dot.wd-connection-ok {
+  background: #8fc59e;
+}
+.wd-connection-dot.wd-connection-error {
+  background: #e38c7a;
+}
+.wd-connection p {
+  margin: 6px 0 0;
+}
+.wd-connection-detail {
+  color: #8b9ca7;
+  font-size: 11px;
+}
+form {
+  display: grid;
+  gap: 13px;
+}
+label {
+  color: #aab8c2;
+  display: grid;
+  font-size: 12px;
+  gap: 5px;
+}
+input[type='url'],
+input[type='password'] {
+  background: #111b23;
+  border: 1px solid #344754;
+  border-radius: 4px;
+  color: #e8edf2;
+  padding: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.wd-check {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+.wd-check input {
+  accent-color: #d6a85f;
+}
+button {
+  background: #d6a85f;
+  border: 0;
+  border-radius: 4px;
+  color: #101a21;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 9px;
+}
+button.wd-secondary {
+  background: transparent;
+  border: 1px solid #52616b;
+  color: #dbe7ee;
+  font-size: 12px;
+  margin-top: 9px;
+  padding: 7px 9px;
+}
+button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid #d6a85f;
+  outline-offset: 2px;
+}
+#saved {
+  color: #8fc59e;
+  min-height: 20px;
+  margin: 0;
+}
