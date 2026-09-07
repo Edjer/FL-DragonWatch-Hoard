@@ -141,12 +141,16 @@ function numberValue(value: string): number | null {
 }
 
 function labelledValue(root: ParentNode, label: string): string {
-  const candidates = Array.from(root.querySelectorAll<HTMLElement>('[data-label], dt, tr, li'));
+  const normalizedLabel = label.toLowerCase();
+  const candidates = Array.from(root.querySelectorAll<HTMLElement>('*'));
   const match = candidates.find((element) => {
     const declared = element.dataset.label ?? '';
+    const normalized = text(element).toLowerCase();
     return (
-      declared.toLowerCase() === label.toLowerCase() ||
-      text(element).toLowerCase().startsWith(`${label.toLowerCase()}:`)
+      declared.toLowerCase() === normalizedLabel ||
+      normalized === normalizedLabel ||
+      normalized.startsWith(`${normalizedLabel}:`) ||
+      normalized.startsWith(`${normalizedLabel} `)
     );
   });
   if (!match) return '';
@@ -156,6 +160,90 @@ function labelledValue(root: ParentNode, label: string): string {
   return text(match)
     .replace(new RegExp(`^${label}\\s*:?\\s*`, 'i'), '')
     .trim();
+}
+
+function hasLabel(root: ParentNode, label: string): boolean {
+  const expected = label.toLowerCase();
+  return Array.from(root.querySelectorAll<HTMLElement>('*')).some(
+    (element) => text(element).toLowerCase() === expected,
+  );
+}
+
+function profileBadge(root: ParentNode, label: string): boolean {
+  const expected = label.toLowerCase();
+  return Array.from(root.querySelectorAll<HTMLElement>('*')).some((element) => {
+    const attributes = [element.getAttribute('aria-label'), element.getAttribute('title')]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return (
+      attributes.includes(expected) ||
+      (element.children.length === 0 && text(element).toLowerCase() === expected)
+    );
+  });
+}
+
+function demographicValue(root: ParentNode): string {
+  const explicit =
+    text(first(root, ['[data-test-id="profile-demographics"]', '[data-profile-demographics]'])) ||
+    labelledValue(root, 'Demographics');
+  if (explicit) return explicit;
+  return (
+    Array.from(root.querySelectorAll<HTMLElement>('*'))
+      .map((element) => (element.children.length === 0 ? text(element) : directText(element)))
+      .find((value) =>
+        /^\d{1,3}\s*(?:m|f|nb|enby|nonbinary|non-binary|man|woman)\b/i.test(value),
+      ) ?? ''
+  );
+}
+
+function socialCount(root: ParentNode, label: string): number | null {
+  const labelled = labelledValue(root, label);
+  if (labelled) return numberValue(labelled);
+  for (const element of Array.from(root.querySelectorAll<HTMLElement>('[title], [aria-label]'))) {
+    const descriptor = `${element.getAttribute('title') ?? ''} ${element.getAttribute('aria-label') ?? ''}`;
+    if (new RegExp(`\\b${label}\\b`, 'i').test(descriptor)) {
+      const count = numberValue(descriptor);
+      if (count !== null) return count;
+    }
+  }
+  return numberValue(text(first(root, [`[data-test-id="profile-${label.toLowerCase()}"]`])));
+}
+
+function relationshipBlocks(
+  root: ParentNode,
+): Array<{ element: HTMLElement; category: FetLifeRelationship['category'] }> {
+  const blocks: Array<{ element: HTMLElement; category: FetLifeRelationship['category'] }> = [];
+  for (const label of [
+    { text: 'Relationships', category: 'relationship' as const },
+    { text: 'D/s relationships', category: 'ds' as const },
+  ]) {
+    const labelElement = Array.from(root.querySelectorAll<HTMLElement>('*')).find(
+      (element) =>
+        element.children.length === 0 && text(element).toLowerCase() === label.text.toLowerCase(),
+    );
+    for (
+      let parent = labelElement?.parentElement;
+      parent && parent !== root;
+      parent = parent.parentElement
+    ) {
+      if (parent.querySelector('a[href]')) {
+        blocks.push({ element: parent, category: label.category });
+        break;
+      }
+    }
+  }
+  return blocks;
+}
+
+function usernameFromProfileUrl(sourceUrl: string): string | null {
+  try {
+    const path = new URL(sourceUrl).pathname.split('/').filter(Boolean);
+    const candidate = path.at(-1);
+    return candidate && !/^\d+$/.test(candidate) ? decodeURIComponent(candidate) : null;
+  } catch {
+    return null;
+  }
 }
 
 function listValues(root: ParentNode, selectors: readonly string[]): string[] {
@@ -332,29 +420,54 @@ function sectionWarnings(sections: FetLifeProfileSnapshot['sections']): string[]
     .map(([name]) => `The ${name} section is still loading.`);
 }
 
-function extractRelationships(root: ParentNode, baseUrl: string): FetLifeRelationship[] {
-  const section = first(root, SECTION_SELECTORS.relationships);
-  if (!section) return [];
-  const rows = all(section, [
-    '[data-test-id="relationship-row"]',
-    '[data-relationship-type]',
-    'li',
-    'tr',
-  ]);
+function extractRelationships(
+  root: ParentNode,
+  baseUrl: string,
+  header: HTMLElement,
+): FetLifeRelationship[] {
+  const frame = first(root, SECTION_SELECTORS.relationships);
+  const scopes = [
+    ...(frame
+      ? [{ element: frame, category: null as FetLifeRelationship['category'] | null }]
+      : []),
+    ...relationshipBlocks(header),
+  ];
+  if (scopes.length === 0) return [];
   const result: FetLifeRelationship[] = [];
-  for (const row of rows.length > 0 ? rows : [section]) {
-    const category =
-      row.dataset.category === 'ds' || row.dataset.relationshipCategory === 'ds'
-        ? 'ds'
-        : 'relationship';
-    const type =
-      row.dataset.relationshipType ??
-      text(first(row, ['[data-test-id="relationship-type"]', 'dt', 'strong']));
-    const link = row.querySelector<HTMLAnchorElement>('a[href]');
-    const profileUrl = canonicalUrl(link?.getAttribute('href') ?? null, baseUrl);
-    const username = link ? text(link) || null : null;
-    if (!type && !username) continue;
-    result.push({ category, type: type || 'Relationship', username, profileUrl });
+  for (const scope of scopes) {
+    const rows = all(scope.element, [
+      '[data-test-id="relationship-row"]',
+      '[data-relationship-type]',
+      'li',
+      'tr',
+    ]);
+    const relationshipRows =
+      rows.length > 0
+        ? rows
+        : all(scope.element, ['a[href]']).map((link) => link.closest<HTMLElement>('li') ?? link);
+    for (const row of relationshipRows) {
+      const category =
+        row.dataset.category === 'ds' || row.dataset.relationshipCategory === 'ds'
+          ? 'ds'
+          : (scope.category ?? 'relationship');
+      const link = row.matches('a[href]')
+        ? (row as HTMLAnchorElement)
+        : row.querySelector<HTMLAnchorElement>('a[href]');
+      const type =
+        row.dataset.relationshipType ??
+        (text(first(row, ['[data-test-id="relationship-type"]', 'dt', 'strong'])) ||
+          directText(row)
+            .replace(link ? directText(link) : '', '')
+            .trim() ||
+          text(scope.element)
+            .replace(/^\s*(?:Relationships|D\/s relationships)\s*/i, '')
+            .replace(link ? text(link) : '', '')
+            .trim());
+      const profileUrl = canonicalUrl(link?.getAttribute('href') ?? null, baseUrl);
+      const username = link ? directText(link) || text(link) || null : null;
+      if (!type && !username) continue;
+      result.push({ category, type: type || 'Relationship', username, profileUrl });
+    }
   }
   const seen = new Set<string>();
   return result.filter((relationship) => {
@@ -573,10 +686,7 @@ export function extractFetLifeProfile(
   if (!header) return { detected: false, snapshot: null, warnings: [] };
 
   const joined = first(header, ['[data-test-id="profile-joined"]', '[data-profile-joined]']);
-  const demographicsRaw =
-    text(first(header, ['[data-test-id="profile-demographics"]', '[data-profile-demographics]'])) ||
-    labelledValue(header, 'Demographics') ||
-    null;
+  const demographicsRaw = demographicValue(header) || null;
   const demographics = parseDemographics(demographicsRaw ?? '');
   const joinedValue = text(joined) || labelledValue(header, 'Joined');
   const joinedRaw =
@@ -611,12 +721,13 @@ export function extractFetLifeProfile(
         .slice(0, 3),
     );
   }
-  const pronounValue = text(
-    first(header, [
-      '[data-test-id="profile-pronouns"] [data-value]',
-      '[data-test-id="profile-pronouns"]',
-    ]),
-  );
+  const pronounValue =
+    text(
+      first(header, [
+        '[data-test-id="profile-pronouns"] [data-value]',
+        '[data-test-id="profile-pronouns"]',
+      ]),
+    ) || labelledValue(header, 'Pronouns');
   const pronouns = pronounValue
     .replace(/^pronouns\s*:?\s*/i, '')
     .split(/,|;/)
@@ -633,11 +744,11 @@ export function extractFetLifeProfile(
       ),
     ),
   );
-  const username = text(
-    first(header, ['[data-test-id="profile-username"]', '[data-profile-username]', 'h1']),
-  );
+  const username =
+    usernameFromProfileUrl(sourceUrl) ||
+    text(first(header, ['[data-test-id="profile-username"]', '[data-profile-username]', 'h1']));
   const profileUrl = canonicalUrl(sourceUrl, sourceUrl) ?? sourceUrl;
-  const relationships = extractRelationships(root, sourceUrl);
+  const relationships = extractRelationships(root, sourceUrl, header);
   const groups = extractGroups(root, sourceUrl, warnings);
   const events = extractEvents(root, sourceUrl);
   const fetishes = extractFetishes(root, sourceUrl, warnings);
@@ -654,12 +765,14 @@ export function extractFetLifeProfile(
       gender: demographics.gender,
       headlineRole: demographics.role,
       verified:
+        profileBadge(header, 'verified') ||
         first(header, [
           '[data-test-id="profile-verified"]',
           '[data-verified="true"]',
           '[aria-label="Verified"]',
         ]) !== null,
       supporter:
+        profileBadge(header, 'supporter') ||
         first(header, [
           '[data-test-id="profile-supporter"]',
           '[data-supporter="true"]',
@@ -683,23 +796,14 @@ export function extractFetLifeProfile(
       active:
         text(first(header, ['[data-test-id="profile-active"]'])) ||
         labelledValue(header, 'Active') ||
-        null,
+        (hasLabel(header, 'Active') ? 'Active' : null),
       lookingFor,
       joined: { raw: joinedRaw, ...joinedDate },
     },
     social: {
-      friends: numberValue(
-        labelledValue(header, 'Friends') ||
-          text(first(header, ['[data-test-id="profile-friends"]'])),
-      ),
-      followers: numberValue(
-        labelledValue(header, 'Followers') ||
-          text(first(header, ['[data-test-id="profile-followers"]'])),
-      ),
-      following: numberValue(
-        labelledValue(header, 'Following') ||
-          text(first(header, ['[data-test-id="profile-following"]'])),
-      ),
+      friends: socialCount(header, 'Friends'),
+      followers: socialCount(header, 'Followers'),
+      following: socialCount(header, 'Following'),
     },
     relationships,
     groups,

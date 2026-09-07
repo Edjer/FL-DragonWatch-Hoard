@@ -145,6 +145,45 @@ describe('FetLife profile extractor', () => {
     ]);
   });
 
+  it('extracts unlabeled real profile header facts, badges, social counts, and relationships', () => {
+    document.body.innerHTML = `
+      <header data-test-id="profile-header">
+        <h1>ExampleUser</h1>
+        <div>54M Dragon</div>
+        <div>Joined March 2009 #141464</div>
+        <div>Location: Example City, Example Region, United States</div>
+        <a title="174 Friends" href="/ExampleUser/friends">174</a>
+        <a title="152 Followers" href="/ExampleUser/followers">152</a>
+        <a title="218 Following" href="/ExampleUser/following">218</a>
+        <span title="Verified"></span>
+        <span aria-label="Supporter"></span>
+        <div>Active</div>
+        <div><span>Relationships</span><div>Nesting Partner with <a href="/OtherUser">OtherUser</a></div></div>
+      </header>
+    `;
+
+    const snapshot = extractFetLifeProfile(document, sourceUrl).snapshot;
+    expect(snapshot?.identity.username).toBe('ExampleUser');
+    expect(snapshot?.profile).toMatchObject({
+      demographicsRaw: '54M Dragon',
+      age: 54,
+      gender: 'M',
+      headlineRole: 'Dragon',
+      verified: true,
+      supporter: true,
+      active: 'Active',
+      location: { city: 'Example City', region: 'Example Region', country: 'United States' },
+      joined: { raw: 'March 2009', year: 2009, month: 3 },
+    });
+    expect(snapshot?.social).toEqual({ friends: 174, followers: 152, following: 218 });
+    expect(snapshot?.relationships).toContainEqual({
+      category: 'relationship',
+      type: 'Nesting Partner with',
+      username: 'OtherUser',
+      profileUrl: 'https://fetlife.example/OtherUser',
+    });
+  });
+
   it('rejects conflicting and missing stable IDs without guessing', () => {
     document.body.innerHTML =
       '<section data-test-id="profile-header" data-profile-id="141464"><h1 data-test-id="profile-username">ExampleUser</h1><p data-test-id="profile-joined">Joined 2009 #141464</p></section><turbo-frame id="profile_events_999999"></turbo-frame>';
