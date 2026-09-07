@@ -155,8 +155,8 @@ describe('FetLife profile extractor', () => {
         <a title="174 Friends" href="/ExampleUser/friends">174</a>
         <a title="152 Followers" href="/ExampleUser/followers">152</a>
         <a title="218 Following" href="/ExampleUser/following">218</a>
-        <span title="Verified"></span>
-        <span aria-label="Supporter"></span>
+        <a href="/verify" data-original-title="Verified Profile"><svg><use href="#icon-verified"></use></svg></a>
+        <a href="/support" title="FetLife Supporter"><svg><use href="#icon-devil-heart"></use></svg></a>
         <div>Active</div>
         <div><span>Relationships</span><div>Nesting Partner with <a href="/OtherUser">OtherUser</a></div></div>
       </header>

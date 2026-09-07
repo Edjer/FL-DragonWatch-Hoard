@@ -172,12 +172,18 @@ function hasLabel(root: ParentNode, label: string): boolean {
 function profileBadge(root: ParentNode, label: string): boolean {
   const expected = label.toLowerCase();
   return Array.from(root.querySelectorAll<HTMLElement>('*')).some((element) => {
-    const attributes = [element.getAttribute('aria-label'), element.getAttribute('title')]
+    const attributes = [
+      element.getAttribute('aria-label'),
+      element.getAttribute('title'),
+      element.getAttribute('data-original-title'),
+    ]
       .filter(Boolean)
       .join(' ')
       .toLowerCase();
+    const icon = element.querySelector<SVGUseElement>('use[href]')?.getAttribute('href') ?? '';
     return (
       attributes.includes(expected) ||
+      icon.includes(`#icon-${expected}`) ||
       (element.children.length === 0 && text(element).toLowerCase() === expected)
     );
   });
